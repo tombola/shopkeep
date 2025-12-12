@@ -1,0 +1,121 @@
+<?php
+
+namespace WP_CLI\HelloWorld;
+
+use WP_CLI;
+use WP_CLI_Command;
+
+class OrderCommand extends WP_CLI_Command {
+
+	/**
+	 * Displays order details with all order items.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <order_id>
+	 * : The WooCommerce order ID to display.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     # Display order details for order ID 123
+	 *     $ wp order show 123
+	 *
+	 * @param array $args       Indexed array of positional arguments.
+	 * @param array $assoc_args Associative array of associative arguments.
+	 */
+	public function show( $args, $assoc_args ) {
+		// Check if WooCommerce is active
+		if ( ! function_exists( 'wc_get_order' ) ) {
+			WP_CLI::error( 'WooCommerce is not active.' );
+			return;
+		}
+
+		// Get order ID from arguments
+		$order_id = $args[0];
+
+		// Fetch the order
+		$order = wc_get_order( $order_id );
+
+		if ( ! $order ) {
+			WP_CLI::error( "Order #{$order_id} not found." );
+			return;
+		}
+
+		// Display order header
+		WP_CLI::line( '' );
+		WP_CLI::line( WP_CLI::colorize( "%B=== Order #{$order_id} ===%n" ) );
+		WP_CLI::line( '' );
+
+		// Display order details
+		$order_data = array(
+			'Status'         => $order->get_status(),
+			'Date Created'   => $order->get_date_created()->date( 'Y-m-d H:i:s' ),
+			'Customer'       => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+			'Email'          => $order->get_billing_email(),
+			'Phone'          => $order->get_billing_phone(),
+			'Payment Method' => $order->get_payment_method_title(),
+			'Total'          => $order->get_formatted_order_total(),
+		);
+
+		foreach ( $order_data as $label => $value ) {
+			WP_CLI::line( sprintf( '%s: %s', WP_CLI::colorize( "%Y{$label}%n" ), $value ) );
+		}
+
+		// Display billing address
+		WP_CLI::line( '' );
+		WP_CLI::line( WP_CLI::colorize( "%Y--- Billing Address ---%n" ) );
+		WP_CLI::line( $order->get_formatted_billing_address() );
+
+		// Display shipping address if different
+		if ( $order->has_shipping_address() ) {
+			WP_CLI::line( '' );
+			WP_CLI::line( WP_CLI::colorize( "%Y--- Shipping Address ---%n" ) );
+			WP_CLI::line( $order->get_formatted_shipping_address() );
+		}
+
+		// Display order items
+		WP_CLI::line( '' );
+		WP_CLI::line( WP_CLI::colorize( "%Y--- Order Items ---%n" ) );
+		WP_CLI::line( '' );
+
+		$items = $order->get_items();
+
+		if ( empty( $items ) ) {
+			WP_CLI::line( 'No items in this order.' );
+		} else {
+			$item_data = array();
+
+			foreach ( $items as $item_id => $item ) {
+				$product      = $item->get_product();
+				$product_name = $item->get_name();
+				$sku          = $product ? $product->get_sku() : '';
+				$quantity     = $item->get_quantity();
+				$subtotal     = $order->get_formatted_line_subtotal( $item );
+				$total        = wc_price( $item->get_total() );
+
+				$item_data[] = array(
+					'ID'       => $item_id,
+					'Product'  => $product_name,
+					'SKU'      => $sku ?: 'N/A',
+					'Qty'      => $quantity,
+					'Subtotal' => wp_strip_all_tags( $subtotal ),
+					'Total'    => wp_strip_all_tags( $total ),
+				);
+			}
+
+			WP_CLI\Utils\format_items( 'table', $item_data, array( 'ID', 'Product', 'SKU', 'Qty', 'Subtotal', 'Total' ) );
+		}
+
+		// Display order totals
+		WP_CLI::line( '' );
+		WP_CLI::line( WP_CLI::colorize( "%Y--- Order Totals ---%n" ) );
+		WP_CLI::line( sprintf( 'Subtotal: %s', wp_strip_all_tags( wc_price( $order->get_subtotal() ) ) ) );
+		WP_CLI::line( sprintf( 'Shipping: %s', wp_strip_all_tags( wc_price( $order->get_shipping_total() ) ) ) );
+		WP_CLI::line( sprintf( 'Tax: %s', wp_strip_all_tags( wc_price( $order->get_total_tax() ) ) ) );
+		WP_CLI::line( sprintf( 'Discount: %s', wp_strip_all_tags( wc_price( $order->get_discount_total() ) ) ) );
+		WP_CLI::line( sprintf( '%s: %s', WP_CLI::colorize( "%GTotal%n" ), wp_strip_all_tags( $order->get_formatted_order_total() ) ) );
+		WP_CLI::line( '' );
+
+		WP_CLI::success( "Order #{$order_id} displayed successfully." );
+	}
+}

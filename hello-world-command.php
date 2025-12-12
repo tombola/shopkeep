@@ -15,3 +15,4 @@ if ( file_exists( $wpcli_hello_world_autoloader ) ) {
 }
 
 WP_CLI::add_command( 'hello-world', HelloWorldCommand::class );
+WP_CLI::add_command( 'order', OrderCommand::class );
