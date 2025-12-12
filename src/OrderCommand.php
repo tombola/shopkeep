@@ -246,4 +246,197 @@ class OrderCommand extends WP_CLI_Command {
 
 		WP_CLI::success( 'Orders listed successfully.' );
 	}
+
+	/**
+	 * Finds duplicate orders (same items) for a customer by email address.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <email>
+	 * : The customer email address.
+	 *
+	 * [--status=<status>]
+	 * : Filter by order status (e.g., completed, processing, pending).
+	 *
+	 * [--match-quantity]
+	 * : Require exact quantity matches (default: only match products).
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     # Find duplicate orders for a customer
+	 *     $ wp order find_duplicates customer@example.com
+	 *
+	 *     # Find duplicates with exact quantity matches
+	 *     $ wp order find_duplicates customer@example.com --match-quantity
+	 *
+	 *     # Find duplicates in completed orders only
+	 *     $ wp order find_duplicates customer@example.com --status=completed
+	 *
+	 * @param array $args       Indexed array of positional arguments.
+	 * @param array $assoc_args Associative array of associative arguments.
+	 */
+	public function find_duplicates( $args, $assoc_args ) {
+		// Check if WooCommerce is active
+		if ( ! \function_exists( 'wc_get_orders' ) ) {
+			WP_CLI::error( 'WooCommerce is not active.' );
+			return;
+		}
+
+		// Get email from arguments
+		$email = $args[0];
+
+		// Validate email
+		if ( ! \is_email( $email ) ) {
+			WP_CLI::error( "Invalid email address: {$email}" );
+			return;
+		}
+
+		// Get optional parameters
+		$status         = isset( $assoc_args['status'] ) ? $assoc_args['status'] : 'any';
+		$match_quantity = isset( $assoc_args['match-quantity'] );
+
+		// Build query arguments
+		$query_args = array(
+			'billing_email' => $email,
+			'limit'         => -1, // Get all orders
+			'orderby'       => 'date',
+			'order'         => 'DESC',
+		);
+
+		if ( $status !== 'any' ) {
+			$query_args['status'] = $status;
+		}
+
+		// Fetch orders
+		$orders = \wc_get_orders( $query_args );
+
+		if ( empty( $orders ) ) {
+			WP_CLI::warning( "No orders found for email: {$email}" );
+			return;
+		}
+
+		if ( count( $orders ) < 2 ) {
+			WP_CLI::success( "Only one order found. No duplicates possible." );
+			return;
+		}
+
+		// Build order signatures
+		$order_signatures = array();
+
+		foreach ( $orders as $order ) {
+			$order_id = $order->get_id();
+			$items    = $order->get_items();
+
+			if ( empty( $items ) ) {
+				continue;
+			}
+
+			// Create signature for this order
+			$signature_parts = array();
+
+			foreach ( $items as $item ) {
+				$product = $item->get_product();
+				if ( ! $product ) {
+					continue;
+				}
+
+				$product_id = $product->get_id();
+				$quantity   = $item->get_quantity();
+
+				if ( $match_quantity ) {
+					$signature_parts[] = $product_id . ':' . $quantity;
+				} else {
+					$signature_parts[] = $product_id;
+				}
+			}
+
+			// Sort to ensure consistent signature
+			\sort( $signature_parts );
+			$signature = \md5( \implode( '|', $signature_parts ) );
+
+			// Store order with its signature
+			if ( ! isset( $order_signatures[ $signature ] ) ) {
+				$order_signatures[ $signature ] = array();
+			}
+
+			$order_signatures[ $signature ][] = array(
+				'order'     => $order,
+				'order_id'  => $order_id,
+				'signature' => $signature_parts,
+			);
+		}
+
+		// Find duplicates (signatures with more than one order)
+		$duplicates = array();
+		foreach ( $order_signatures as $signature => $orders_group ) {
+			if ( count( $orders_group ) > 1 ) {
+				$duplicates[ $signature ] = $orders_group;
+			}
+		}
+
+		if ( empty( $duplicates ) ) {
+			WP_CLI::success( "No duplicate orders found for {$email}" );
+			return;
+		}
+
+		// Display results
+		WP_CLI::line( '' );
+		WP_CLI::line( WP_CLI::colorize( "%B=== Duplicate Orders for {$email} ===%n" ) );
+		WP_CLI::line( WP_CLI::colorize( "%RFound " . count( $duplicates ) . " set(s) of duplicate orders%n" ) );
+		WP_CLI::line( '' );
+
+		$set_number = 1;
+		foreach ( $duplicates as $signature => $orders_group ) {
+			WP_CLI::line( \str_repeat( '=', 80 ) );
+			WP_CLI::line( WP_CLI::colorize( "%BDuplicate Set #{$set_number}%n - " . count( $orders_group ) . " orders with identical items" ) );
+			WP_CLI::line( \str_repeat( '=', 80 ) );
+
+			// Display the common items
+			$first_order = $orders_group[0]['order'];
+			$items       = $first_order->get_items();
+
+			WP_CLI::line( '' );
+			WP_CLI::line( WP_CLI::colorize( "%Y--- Common Items ---%n" ) );
+
+			$item_data = array();
+			foreach ( $items as $item ) {
+				$product      = $item->get_product();
+				$product_name = $item->get_name();
+				$sku          = $product ? $product->get_sku() : '';
+				$quantity     = $item->get_quantity();
+
+				$item_data[] = array(
+					'Product' => $product_name,
+					'SKU'     => $sku ?: 'N/A',
+					'Qty'     => $quantity,
+				);
+			}
+
+			WP_CLI\Utils\format_items( 'table', $item_data, array( 'Product', 'SKU', 'Qty' ) );
+
+			// Display the duplicate orders
+			WP_CLI::line( '' );
+			WP_CLI::line( WP_CLI::colorize( "%Y--- Duplicate Orders ---%n" ) );
+
+			$orders_table = array();
+			foreach ( $orders_group as $order_info ) {
+				$order    = $order_info['order'];
+				$order_id = $order_info['order_id'];
+
+				$orders_table[] = array(
+					'Order ID' => $order_id,
+					'Date'     => $order->get_date_created()->date( 'Y-m-d H:i:s' ),
+					'Status'   => $order->get_status(),
+					'Total'    => \html_entity_decode( \wp_strip_all_tags( $order->get_formatted_order_total() ), ENT_QUOTES, 'UTF-8' ),
+				);
+			}
+
+			WP_CLI\Utils\format_items( 'table', $orders_table, array( 'Order ID', 'Date', 'Status', 'Total' ) );
+
+			WP_CLI::line( '' );
+			$set_number++;
+		}
+
+		WP_CLI::success( 'Duplicate order search completed.' );
+	}
 }
