@@ -25,7 +25,7 @@ class OrderCommand extends WP_CLI_Command {
 	 */
 	public function show( $args, $assoc_args ) {
 		// Check if WooCommerce is active
-		if ( ! function_exists( 'wc_get_order' ) ) {
+		if ( ! \function_exists( 'wc_get_order' ) ) {
 			WP_CLI::error( 'WooCommerce is not active.' );
 			return;
 		}
@@ -34,7 +34,7 @@ class OrderCommand extends WP_CLI_Command {
 		$order_id = $args[0];
 
 		// Fetch the order
-		$order = wc_get_order( $order_id );
+		$order = \wc_get_order( $order_id );
 
 		if ( ! $order ) {
 			WP_CLI::error( "Order #{$order_id} not found." );
@@ -54,7 +54,7 @@ class OrderCommand extends WP_CLI_Command {
 			'Email'          => $order->get_billing_email(),
 			'Phone'          => $order->get_billing_phone(),
 			'Payment Method' => $order->get_payment_method_title(),
-			'Total'          => $order->get_formatted_order_total(),
+			'Total'          => \html_entity_decode( \wp_strip_all_tags( $order->get_formatted_order_total() ), ENT_QUOTES, 'UTF-8' ),
 		);
 
 		foreach ( $order_data as $label => $value ) {
@@ -64,13 +64,19 @@ class OrderCommand extends WP_CLI_Command {
 		// Display billing address
 		WP_CLI::line( '' );
 		WP_CLI::line( WP_CLI::colorize( "%Y--- Billing Address ---%n" ) );
-		WP_CLI::line( $order->get_formatted_billing_address() );
+		$billing_address = $order->get_formatted_billing_address();
+		$billing_address = \str_replace( array( '<br/>', '<br>', '<br />' ), "\n", $billing_address );
+		$billing_address = \html_entity_decode( \wp_strip_all_tags( $billing_address ), ENT_QUOTES, 'UTF-8' );
+		WP_CLI::line( $billing_address );
 
 		// Display shipping address if different
 		if ( $order->has_shipping_address() ) {
 			WP_CLI::line( '' );
 			WP_CLI::line( WP_CLI::colorize( "%Y--- Shipping Address ---%n" ) );
-			WP_CLI::line( $order->get_formatted_shipping_address() );
+			$shipping_address = $order->get_formatted_shipping_address();
+		$shipping_address = \str_replace( array( '<br/>', '<br>', '<br />' ), "\n", $shipping_address );
+		$shipping_address = \html_entity_decode( \wp_strip_all_tags( $shipping_address ), ENT_QUOTES, 'UTF-8' );
+		WP_CLI::line( $shipping_address );
 		}
 
 		// Display order items
@@ -91,15 +97,15 @@ class OrderCommand extends WP_CLI_Command {
 				$sku          = $product ? $product->get_sku() : '';
 				$quantity     = $item->get_quantity();
 				$subtotal     = $order->get_formatted_line_subtotal( $item );
-				$total        = wc_price( $item->get_total() );
+				$total        = \wc_price( $item->get_total() );
 
 				$item_data[] = array(
 					'ID'       => $item_id,
 					'Product'  => $product_name,
 					'SKU'      => $sku ?: 'N/A',
 					'Qty'      => $quantity,
-					'Subtotal' => wp_strip_all_tags( $subtotal ),
-					'Total'    => wp_strip_all_tags( $total ),
+					'Subtotal' => \html_entity_decode( \wp_strip_all_tags( $subtotal ), ENT_QUOTES, 'UTF-8' ),
+					'Total'    => \html_entity_decode( \wp_strip_all_tags( $total ), ENT_QUOTES, 'UTF-8' ),
 				);
 			}
 
@@ -109,11 +115,11 @@ class OrderCommand extends WP_CLI_Command {
 		// Display order totals
 		WP_CLI::line( '' );
 		WP_CLI::line( WP_CLI::colorize( "%Y--- Order Totals ---%n" ) );
-		WP_CLI::line( sprintf( 'Subtotal: %s', wp_strip_all_tags( wc_price( $order->get_subtotal() ) ) ) );
-		WP_CLI::line( sprintf( 'Shipping: %s', wp_strip_all_tags( wc_price( $order->get_shipping_total() ) ) ) );
-		WP_CLI::line( sprintf( 'Tax: %s', wp_strip_all_tags( wc_price( $order->get_total_tax() ) ) ) );
-		WP_CLI::line( sprintf( 'Discount: %s', wp_strip_all_tags( wc_price( $order->get_discount_total() ) ) ) );
-		WP_CLI::line( sprintf( '%s: %s', WP_CLI::colorize( "%GTotal%n" ), wp_strip_all_tags( $order->get_formatted_order_total() ) ) );
+		WP_CLI::line( sprintf( 'Subtotal: %s', \html_entity_decode( \wp_strip_all_tags( \wc_price( $order->get_subtotal() ) ), ENT_QUOTES, 'UTF-8' ) ) );
+		WP_CLI::line( sprintf( 'Shipping: %s', \html_entity_decode( \wp_strip_all_tags( \wc_price( $order->get_shipping_total() ) ), ENT_QUOTES, 'UTF-8' ) ) );
+		WP_CLI::line( sprintf( 'Tax: %s', \html_entity_decode( \wp_strip_all_tags( \wc_price( $order->get_total_tax() ) ), ENT_QUOTES, 'UTF-8' ) ) );
+		WP_CLI::line( sprintf( 'Discount: %s', \html_entity_decode( \wp_strip_all_tags( \wc_price( $order->get_discount_total() ) ), ENT_QUOTES, 'UTF-8' ) ) );
+		WP_CLI::line( sprintf( '%s: %s', WP_CLI::colorize( "%GTotal%n" ), \html_entity_decode( \wp_strip_all_tags( $order->get_formatted_order_total() ), ENT_QUOTES, 'UTF-8' ) ) );
 		WP_CLI::line( '' );
 
 		WP_CLI::success( "Order #{$order_id} displayed successfully." );
