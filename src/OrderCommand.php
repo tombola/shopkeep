@@ -47,6 +47,7 @@ class OrderCommand extends WP_CLI_Command {
 		WP_CLI::line( '' );
 
 		// Display order details
+		$admin_url = \admin_url( "post.php?post={$order_id}&action=edit" );
 		$order_data = array(
 			'Status'         => $order->get_status(),
 			'Date Created'   => $order->get_date_created()->date( 'Y-m-d H:i:s' ),
@@ -55,6 +56,7 @@ class OrderCommand extends WP_CLI_Command {
 			'Phone'          => $order->get_billing_phone(),
 			'Payment Method' => $order->get_payment_method_title(),
 			'Total'          => \html_entity_decode( \wp_strip_all_tags( $order->get_formatted_order_total() ), ENT_QUOTES, 'UTF-8' ),
+			'Admin URL'      => $admin_url,
 		);
 
 		foreach ( $order_data as $label => $value ) {
@@ -207,10 +209,12 @@ class OrderCommand extends WP_CLI_Command {
 			WP_CLI::line( \str_repeat( '=', 80 ) );
 
 			// Display basic order info
+			$admin_url = \admin_url( "post.php?post={$order_id}&action=edit" );
 			WP_CLI::line( sprintf( 'Status: %s', WP_CLI::colorize( "%Y{$order->get_status()}%n" ) ) );
 			WP_CLI::line( sprintf( 'Date: %s', $order->get_date_created()->date( 'Y-m-d H:i:s' ) ) );
 			WP_CLI::line( sprintf( 'Customer: %s', $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ) );
 			WP_CLI::line( sprintf( 'Total: %s', \html_entity_decode( \wp_strip_all_tags( $order->get_formatted_order_total() ), ENT_QUOTES, 'UTF-8' ) ) );
+			WP_CLI::line( sprintf( 'Admin URL: %s', $admin_url ) );
 
 			// Display order items
 			WP_CLI::line( '' );
@@ -424,16 +428,18 @@ class OrderCommand extends WP_CLI_Command {
 			foreach ( $orders_group as $order_info ) {
 				$order    = $order_info['order'];
 				$order_id = $order_info['order_id'];
+				$admin_url = \admin_url( "post.php?post={$order_id}&action=edit" );
 
 				$orders_table[] = array(
-					'Order ID' => $order_id,
-					'Date'     => $order->get_date_created()->date( 'Y-m-d H:i:s' ),
-					'Status'   => $order->get_status(),
-					'Total'    => \html_entity_decode( \wp_strip_all_tags( $order->get_formatted_order_total() ), ENT_QUOTES, 'UTF-8' ),
+					'Order ID'  => $order_id,
+					'Date'      => $order->get_date_created()->date( 'Y-m-d H:i:s' ),
+					'Status'    => $order->get_status(),
+					'Total'     => \html_entity_decode( \wp_strip_all_tags( $order->get_formatted_order_total() ), ENT_QUOTES, 'UTF-8' ),
+					'Admin URL' => $admin_url,
 				);
 			}
 
-			WP_CLI\Utils\format_items( 'table', $orders_table, array( 'Order ID', 'Date', 'Status', 'Total' ) );
+			WP_CLI\Utils\format_items( 'table', $orders_table, array( 'Order ID', 'Date', 'Status', 'Total', 'Admin URL' ) );
 
 			WP_CLI::line( '' );
 			$set_number++;

@@ -29,6 +29,7 @@ wp order show 123
 **Output includes:**
 - Order status, date, customer information
 - Payment method and order total
+- Admin URL to edit the order in WP Admin
 - Billing and shipping addresses
 - Order items table (Product, SKU, Quantity, Total)
 - Order totals breakdown (Subtotal, Shipping, Tax, Discount, Total)
@@ -65,7 +66,7 @@ wp order by_email customer@example.com --status=processing --limit=5
 
 **Output includes:**
 - Order count summary
-- For each order: Order ID, Status, Date, Customer, Total
+- For each order: Order ID, Status, Date, Customer, Total, Admin URL
 - Order items table for each order
 
 ---
@@ -105,7 +106,7 @@ wp order find_duplicates customer@example.com --status=completed
 - Number of duplicate sets found
 - For each duplicate set:
   - Common items table (Product, SKU, Quantity)
-  - Duplicate orders table (Order ID, Date, Status, Total)
+  - Duplicate orders table (Order ID, Date, Status, Total, Admin URL)
 
 ---
 
