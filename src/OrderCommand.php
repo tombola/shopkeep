@@ -321,6 +321,8 @@ class OrderCommand extends WP_CLI_Command {
 		}
 
 		// Build order signatures
+		// Note: A signature is based on ALL items in an order. Two orders are only
+		// considered duplicates if they have exactly the same items (no more, no less).
 		$order_signatures = array();
 
 		foreach ( $orders as $order ) {
@@ -331,7 +333,7 @@ class OrderCommand extends WP_CLI_Command {
 				continue;
 			}
 
-			// Create signature for this order
+			// Create signature for this order based on ALL items
 			$signature_parts = array();
 
 			foreach ( $items as $item ) {
