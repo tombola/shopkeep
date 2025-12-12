@@ -110,6 +110,55 @@ wp order find_duplicates customer@example.com --status=completed
 
 ---
 
+#### Scan for Duplicates in Date Range
+
+Performantly scan all orders within a specified date range to find duplicates, grouped by customer email:
+
+```bash
+wp order scan_duplicates --start=<date> [--end=<date>] [--status=<status>] [--match-quantity]
+```
+
+**Parameters:**
+- `--start=<date>` - Start date for the scan in YYYY-MM-DD format (required)
+- `--end=<date>` - End date for the scan in YYYY-MM-DD format (default: today)
+- `--status=<status>` - Filter by order status (e.g., completed, processing, pending)
+- `--match-quantity` - Require exact quantity matches (default: only match products)
+
+**Examples:**
+```bash
+# Scan all orders from January 2024
+wp order scan_duplicates --start=2024-01-01 --end=2024-01-31
+
+# Scan completed orders from November to today
+wp order scan_duplicates --start=2024-11-01 --status=completed
+
+# Scan with exact quantity matching
+wp order scan_duplicates --start=2024-01-01 --match-quantity
+
+# Scan last year's orders
+wp order scan_duplicates --start=2024-01-01 --end=2024-12-31
+```
+
+**How it works:**
+- Fetches all orders within the specified date range
+- Groups orders by customer email address
+- Analyzes each customer's orders to find duplicates (orders with identical items)
+- Only displays customers who have duplicate orders
+- Optimized for performance when scanning large numbers of orders
+
+**Output includes:**
+- Total number of orders scanned
+- Number of unique email addresses analyzed
+- For each email address with duplicates:
+  - Email address and number of duplicate sets
+  - For each duplicate set:
+    - List of items (compact format)
+    - Table of duplicate orders (Order ID, Date, Status, Total, Admin URL)
+
+**Use case:** This command is ideal for periodic audits to identify customers who may have accidentally placed duplicate orders across your entire order history or a specific time period.
+
+---
+
 ### Example: Hello World
 
 The package also includes a simple example command:
