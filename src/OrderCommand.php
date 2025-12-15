@@ -530,7 +530,16 @@ class OrderCommand extends WP_CLI_Command {
 		$orders_by_email = array();
 
 		foreach ( $orders as $order ) {
+			// Skip refunds - they don't have billing info and aren't regular orders
+			if ( $order->get_type() === 'shop_order_refund' ) {
+				continue;
+			}
+
 			$email = $order->get_billing_email();
+			if ( empty( $email ) ) {
+				continue;
+			}
+
 			if ( ! isset( $orders_by_email[ $email ] ) ) {
 				$orders_by_email[ $email ] = array();
 			}
