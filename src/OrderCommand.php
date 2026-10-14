@@ -47,7 +47,7 @@ class OrderCommand extends WP_CLI_Command {
 		WP_CLI::line( '' );
 
 		// Display order details
-		$admin_url = \admin_url( "post.php?post={$order_id}&action=edit" );
+		$admin_url = $order->get_edit_order_url();
 		$order_data = array(
 			'Status'         => $order->get_status(),
 			'Date Created'   => $order->get_date_created()->date( 'Y-m-d H:i:s' ),
@@ -209,7 +209,7 @@ class OrderCommand extends WP_CLI_Command {
 			WP_CLI::line( \str_repeat( '=', 80 ) );
 
 			// Display basic order info
-			$admin_url = \admin_url( "post.php?post={$order_id}&action=edit" );
+			$admin_url = $order->get_edit_order_url();
 			WP_CLI::line( sprintf( 'Status: %s', WP_CLI::colorize( "%Y{$order->get_status()}%n" ) ) );
 			WP_CLI::line( sprintf( 'Date: %s', $order->get_date_created()->date( 'Y-m-d H:i:s' ) ) );
 			WP_CLI::line( sprintf( 'Customer: %s', $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ) );
@@ -428,7 +428,7 @@ class OrderCommand extends WP_CLI_Command {
 			foreach ( $orders_group as $order_info ) {
 				$order    = $order_info['order'];
 				$order_id = $order_info['order_id'];
-				$admin_url = \admin_url( "post.php?post={$order_id}&action=edit" );
+				$admin_url = $order->get_edit_order_url();
 
 				$orders_table[] = array(
 					'Order ID'  => $order_id,
@@ -659,7 +659,7 @@ class OrderCommand extends WP_CLI_Command {
 				foreach ( $orders_group as $order_info ) {
 					$order     = $order_info['order'];
 					$order_id  = $order_info['order_id'];
-					$admin_url = \admin_url( "post.php?post={$order_id}&action=edit" );
+					$admin_url = $order->get_edit_order_url();
 
 					$orders_table[] = array(
 						'Order ID'  => $order_id,
